@@ -1,9 +1,12 @@
 # Azure User-Assigned Managed Identity - Demo
 
-* **Author**: [Ndamulelo Nemakhavhani](https://ndamulelo.co.za)
+* **Author**: [Ndamulelo Nemakhavhani](https://blog.ndamulelo.co.za/about)
+* **Article**: [Securing Azure PaaS Access Using Managed Identities](https://blog.ndamulelo.co.za/azure-user-assigned-managed-identity-demo)
+* **Issues**: [info@rihonegroup.com](mailto:info@info@rihonegroup.com)
 * **Date**: 2024-02-14
 
-> This is a simple demo to show how to use a user-assigned managed identity to access Azure resources.
+> **Azure Managed Identities** provide a secure and simple way to access Azure resources **without the need to store credentials** in code or configuration files. This  demo illustrated the benefits of using a user-assigned managed identity on a serverless workflow for tagging product images using **Azure Vision API**.
+
 
 
  ![Azure User-Assigned Managed Identity - Demo](./azure-managed-identity-template.png)
