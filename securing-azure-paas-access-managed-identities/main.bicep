@@ -185,6 +185,10 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           value: appInsights.properties.InstrumentationKey
         }
         {
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: appInsights.properties.ConnectionString
+        }
+        {
           name: 'VAULT_ENDPOINT'
           value: keyVault.properties.vaultUri
         }
