@@ -64,20 +64,20 @@ resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-01-0
 
 resource queueIn 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-01-01' = {
   parent: queueService
-  name: 'queueIn'
+  name: 'queue-in'
   properties: {
     metadata: {
-      'queue-type': 'inbound'
+      queueType: 'inbound'
     }
   }
 }
 
 resource queueOut 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-01-01' = {
-  name: 'queueOut'
+  name: 'queue-out'
   parent: queueService
   properties: {
     metadata: {
-      'queue-type': 'outbound'
+      queueType: 'outbound'
     }
   }
 }
@@ -97,7 +97,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: functionAppName
   location: location
-  kind: 'functionapp, linux'
+  kind: 'functionapp'
   identity: {
     type: 'SystemAssigned, UserAssigned'
     userAssignedIdentities: {
@@ -131,6 +131,40 @@ resource cosmosDb 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
       }
     ]
     databaseAccountOfferType: 'Standard'
+  }
+}
+
+resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-04-15' = {
+  name: 'IdentityDemoDB'
+  parent: cosmosDb
+  properties: {
+    options: {
+      autoscaleSettings: {
+        maxThroughput: 1000
+      }
+    }
+    resource: {
+      id: 'IdentityDemoDB'
+    }
+  }
+}
+
+resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
+  name: 'mydbcontainer'
+  parent: database
+  properties: {
+    resource: {
+      id: 'mydbcontainer'
+      partitionKey: {
+        paths: [
+          '/id'
+        ]
+        kind: 'Hash'
+      }
+    }
+    options: {
+      throughput: 400
+    }
   }
 }
 
@@ -183,15 +217,40 @@ resource storageAccountQueueAccess 'Microsoft.Authorization/roleAssignments@2022
   }
 }
 
-resource cosmosDBDataAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid('${managedIdentity.name}-cosmosdb-data-access')
-  scope: cosmosDb
+resource cosmosDbReadWriteRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2023-04-15' = {
+  name: guid('${cosmosDb.name}-customreadwriterole')
+  parent: cosmosDb
   properties: {
-    description: 'Allow identity to list containers, as well as read and write from CosmosDB'
-    principalType: 'ServicePrincipal'
+    // assignableScopes: [
+    //   '/subscriptions/${subscription().id}/resourceGroups/${resourceGroup().name}/providers/Microsoft.DocumentDB/databaseAccounts'
+    // ]
+    permissions: [
+      {
+        dataActions: [
+          'Microsoft.DocumentDB/databaseAccounts/readMetadata'
+          'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/*'
+          'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/*'
+        ]
+        notDataActions: []
+      }
+    ]
+    roleName: 'Cosmos DB Custom Data Contributor'
+    type: 'CustomRole'
+  }
+}
+
+@description('Allow identity to list containers, as well as read and write from CosmosDB')
+resource cosmosDBDataAccess 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-04-15' = {
+  name: guid('${managedIdentity.name}-cosmosdb-data-access')
+  parent: cosmosDb
+  properties: {
+    //scope: '/' // You could also scope this to a specific database or container e.g. '/dbs/IdentityDemoDB/colls/mydbcontainer'
     principalId: managedIdentity.properties.principalId
+    roleDefinitionId: cosmosDbReadWriteRole.id
     // https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-rbac#built-in-role-definitions
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '00000000-0000-0000-0000-000000000002')
+    //roleDefinitionId: '/${subscription().id}/resourceGroups/<databaseAccountResourceGroup>/providers/Microsoft.DocumentDB/databaseAccounts/<myCosmosAccount>/sqlRoleDefinitions/<roleDefinitionId>'
+    //roleDefinitionId: '/subscriptions/${subscription().id}/resourceGroups/${resourceGroup().name}/providers/Microsoft.DocumentDB/databaseAccounts/${cosmosDb.name}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
+    // roleDefinitionId: subscriptionResourceId(resourceGroup().id ,'Microsoft.DocumentDB/databaseAccounts/${cosmosDb.name}/sqlRoleDefinitions', '00000000-0000-0000-0000-000000000002')
   }
 }
 

@@ -16,11 +16,12 @@
 
 - Azure subscription
 - Azure CLI
-- Perimissions to create & assign permissions on a Resource Group or Subscription level
+- Perimissions to create & assign permissions on a Resource Group or Subscription level - For this example, the user is assigned the `
+Role Based Access Control Administrator` role.
 
 ## Deployment
 
-1. [Optional] Create a resource group
+1. [Optional] Create a resource group if you do not have one already
 
    ```bash
    az group create --name identity-demo2024-rg --location westeurope
@@ -50,3 +51,77 @@ that will automatically tag product images using [Azure Vision API](https://azur
   5. The function creates a new record in a CosmosDB database with the image URL and the tags
   6. (Optional) Instead of using [Azure Vision API](https://azure.microsoft.com/en-us/products/ai-services/ai-vision), you can use a vision model from other providers like Google Cloud Vision API, AWS Rekognition, etc. Store 
     the API keys in Azure Key Vault and use the managed identity to access the keys.
+
+
+
+## Cleanup
+
+- If you do not intend to keep the resources, you can delete the resource group to remove all the resources created in this demo.
+
+  ```bash
+  az group delete --name identity-demo2024-rg --yes --no-wait
+  ```
+
+  <br/>
+  <br/>
+
+
+# Troubleshooting
+
+   * **Deployment permissions**: If you encounter an  Authorization error during deployment, ensure that you have the necessary permissions to create and assign permissions on a Resource Group or Subscription level. Note that having Contributor permissions on a Resource Group does not automatically grant you the ability to assign permissions to a managed identity.
+
+
+   * **...role definition with ID '00000000000000000000000000000002' does not exist": If you ecnounter this error while deploying the template, try using the Azure CLI to assign the role to the managed identity instead
+
+   ```bash 
+   resourceGroupName='<myResourceGroup>'
+   accountName='<myCosmosAccount>'
+   readOnlyRoleDefinitionId = '00000000-0000-0000-0000-000000000002' # This is the ID of the Cosmos DB Built-in Data contributor role definition
+   principalId = "<replace me>" # This is the object ID of the managed identity.
+
+   az cosmosdb sql role assignment create --account-name $accountName \ 
+      --resource-group $resourceGroupName \
+      --scope "/" \
+      --principal-id $principalId \
+      --role-definition-id $readOnlyRoleDefinitionId
+   ```
+
+   * Better yet, you could define a custom role with the necessary permissions and assign it to the managed identity. This will give you more control over the permissions granted to the managed identity. For example:
+
+   ```json 
+   // custom-role.json
+   {
+      "Name": "CosmosDBDataContributor",
+      "IsCustom": true,
+      "Description": "Can read and write all data in the Cosmos DB account",
+      "Actions": [
+            "Microsoft.DocumentDB/databaseAccounts/readMetadata",
+            "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/*",
+            "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/*"
+      ],
+      "NotActions": [],
+      "DataActions": [],
+      "NotDataActions": [],
+      "AssignableScopes": [
+         "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DocumentDB/databaseAccounts/{databaseAccountName}"
+      ]
+   }
+   ```
+
+   * Create the custom role using Azure CLI
+
+   ```bash
+   az cosmosdb sql role definition create --account-name $accountName \
+      --resource-group $resourceGroupName \
+      --body custom-role.json
+   ```
+
+   * Assign the custom role to the managed identity
+
+   ```bash
+   az cosmosdb sql role assignment create --account-name $accountName \
+      --resource-group $resourceGroupName \
+      --scope "/" \
+      --principal-id $principalId \
+      --role-definition-id $roleDefinitionId
+   ```
