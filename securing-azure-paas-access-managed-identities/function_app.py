@@ -7,15 +7,18 @@ import logging
 
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
-from azure.cognitiveservices.vision.computervision import ComputerVisionClient
-from azure.cognitiveservices.vision.computervision.models import VisualFeatureTypes
-from msrest.authentication import CognitiveServicesCredentials
+from azure.core.credentials import AzureKeyCredential
+from azure.ai.vision.imageanalysis import ImageAnalysisClient
+from azure.ai.vision.imageanalysis.models import VisualFeatures, ImageAnalysisResult
 
 app = func.FunctionApp()
 USE_3RD_PARTY_API = os.environ.get("USE_3RD_PARTY_API", "False").lower() == "true"
 IDENTITY_CLIENT_ID = os.environ['AZURE_CLIENT_ID']
 VAULT_ENDPOINT = os.environ['VAULT_ENDPOINT']
+IS_DEVELOPMENT = os.environ.get('IS_DEVELOPMENT', "False").lower() == "true"
 COMPUTER_VISION_REGION = os.environ.get('COMPUTER_VISION_REGION', 'westeurope')
+COMPUTER_VISION_ENDPOINT = os.environ.get(
+    'COMPUTER_VISION_ENDPOINT', f"https://{COMPUTER_VISION_REGION}.api.cognitive.microsoft.com/")
 
 
 # TODO: Add retries etc
@@ -25,17 +28,18 @@ def __get_kv_secret(endpoint: str, secretName: str, credentials: DefaultAzureCre
     return retrieved_secret.value
 
 
-def _get_tags_from_vision_api(image: bytes, api_key: str, region: str = COMPUTER_VISION_REGION) -> list:
-    # This function is a mockup of a function that would call the Azure Vision API
-    # to get tags for an image.
-    url = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Broadway_and_Times_Square_by_night.jpg/450px-Broadway_and_Times_Square_by_night.jpg"
-    client = ComputerVisionClient(
-        endpoint=f"https://{region}.api.cognitive.microsoft.com/",
-        credentials=CognitiveServicesCredentials(api_key)
-    )
-    image_analysis_response = client.analyze_image(url, visual_features=[VisualFeatureTypes.tags])
-    image_analysis_response.response.raise_for_status()
-    image_tags = [tag.name for tag in image_analysis_response.tags]
+def _get_tags_from_vision_api(image: bytes, api_key: str, endpoint: str) -> list:
+    logging.info(f"Getting tags from vision API")
+    start = time.perf_counter()
+    client = ImageAnalysisClient(endpoint=endpoint, credentials=AzureKeyCredential(api_key))
+    image_analysis_res: ImageAnalysisResult = client._analyze_from_image_data(image_content=image, 
+                                                                              visual_features=[VisualFeatures.TAGS],
+                                                                              language="en")
+    model = image_analysis_res.model_version
+    has_tags = image_analysis_res.tags is not None and len(image_analysis_res.tags.list) > 0
+    elapsed = round(time.perf_counter() - start, 4)
+    image_tags = [tag.name for tag in image_analysis_res.tags.list] if has_tags else []
+    logging.info(f"Finished getting ${len(image_tags)} tags from vision API using Model={model}, Duration={elapsed}s")
     return image_tags
 
 
@@ -62,10 +66,10 @@ def main(myblob: func.InputStream):
     start = time.perf_counter()
     blob_content: bytes = myblob.read()
     # Authenticate with user managed identity to acess PAAS services
-    kv_credentials = DefaultAzureCredential(managed_identity_client_id=IDENTITY_CLIENT_ID)
-
+    credentials = DefaultAzureCredential(managed_identity_client_id=IDENTITY_CLIENT_ID) if not IS_DEVELOPMENT else \
+        DefaultAzureCredential()
     try:
-        vision_api_key = __get_kv_secret(VAULT_ENDPOINT, "vision-api-key", kv_credentials)
+        vision_api_key = __get_kv_secret(VAULT_ENDPOINT, "vision-api-key", credentials)
         tags = _get_tags_from_vision_api(api_key=vision_api_key, image=blob_content) if not USE_3RD_PARTY_API \
             else _get_tags_from_3rd_party_api(blob_content)
         logging.info(f"Tags: {tags}")

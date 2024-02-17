@@ -14,7 +14,7 @@ param keyVaultName string = 'mykeyvault-${uniqueString(resourceGroup().id)}'
 param identityName string = 'myuseridentity-${uniqueString(resourceGroup().id)}'
 
 @description('The name of the Computer Vision resource to create')
-param computerVisionName string = 'myidentitydemoviz${uniqueString(resourceGroup().id)}'
+param computerVisionName string = 'mungana-identity-training-004'
 
 @description('Whether the managed identity has contributor access on the resource group level')
 param isRGContributor bool = false
@@ -49,6 +49,12 @@ resource cognitiveVision 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   }
   properties: {
     customSubDomainName: computerVisionName
+    publicNetworkAccess: 'Enabled'
+    networkAcls: {
+      defaultAction: 'Allow'
+      ipRules: []
+      virtualNetworkRules: []
+    }
   }
 }
 
@@ -138,12 +144,28 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=core.windows.net;AccountKey=${storageAccount.listKeys().keys[0].value}'
         }
         {
+          name: 'FUNCTIONS_EXTENSION_VERSION'
+          value: '~4'
+        }
+        {
+          name: 'FUNCTIONS_WORKER_RUNTIME'
+          value: 'python'
+        }
+        {
+          name: 'AzureWebJobsFeatureFlags'
+          value: 'EnableWorkerIndexing'
+        }
+        {
           name: 'VAULT_ENDPOINT'
           value: keyVault.properties.vaultUri
         }
         {
           name: 'AZURE_CLIENT_ID'
           value: managedIdentity.properties.clientId
+        }
+        {
+          name: 'COMPUTER_VISION_ENDPOINT'
+          value: cognitiveVision.properties.endpoint
         }
         {
           name: 'COMPUTER_VISION_REGION'
