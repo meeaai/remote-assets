@@ -9,7 +9,7 @@
 
 
 
- ![Azure User-Assigned Managed Identity - Demo](./azure-managed-identity-template.png)
+ ![Azure User-Assigned Managed Identity - Demo](./images/azure-managed-identity-template.png)
 
 
 ## Prerequisites

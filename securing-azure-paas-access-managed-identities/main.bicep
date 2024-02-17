@@ -13,6 +13,9 @@ param keyVaultName string = 'mykeyvault-${uniqueString(resourceGroup().id)}'
 @description('The name of the managed identity resource.')
 param identityName string = 'myuseridentity-${uniqueString(resourceGroup().id)}'
 
+@description('The name of the Computer Vision resource to create')
+param computerVisionName string = 'myidentitydemoviz${uniqueString(resourceGroup().id)}'
+
 @description('Whether the managed identity has contributor access on the resource group level')
 param isRGContributor bool = false
 
@@ -29,6 +32,24 @@ resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-
   name: identityName
   location: location
   tags: tags
+}
+
+resource cognitiveVision 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
+  name: computerVisionName
+  location: location
+  kind: 'ComputerVision'
+  identity: {
+    type: 'SystemAssigned, UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentity.id}': {}
+    }
+  }
+  sku: {
+    name: 'S0'
+  }
+  properties: {
+    customSubDomainName: computerVisionName
+  }
 }
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
@@ -179,6 +200,15 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
       family: 'A'
       name: 'standard'
     }
+  }
+}
+
+resource secret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  name: 'vision-api-key'
+  parent: keyVault
+  properties: {
+    value: cognitiveVision.listKeys().key1
+    contentType: 'text/plain'
   }
 }
 
