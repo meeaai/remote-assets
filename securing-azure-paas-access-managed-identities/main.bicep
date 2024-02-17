@@ -109,6 +109,31 @@ resource queueOut 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-0
   }
 }
 
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+  name: 'log-${functionAppName}'
+  location: location
+  properties: any({
+    retentionInDays: 7
+    features: {
+      searchVersion: 1
+    }
+    sku: {
+      name: 'PerGB2018'
+    }
+  })
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: 'appi-${functionAppName}'
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    RetentionInDays: 31
+    WorkspaceResourceId: logAnalyticsWorkspace.id
+  }
+}
+
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   name: '${functionAppName}-plan'
   location: location
@@ -156,6 +181,10 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           value: 'EnableWorkerIndexing'
         }
         {
+          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+          value: appInsights.properties.InstrumentationKey
+        }
+        {
           name: 'VAULT_ENDPOINT'
           value: keyVault.properties.vaultUri
         }
@@ -170,6 +199,10 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         {
           name: 'COMPUTER_VISION_REGION'
           value: cognitiveVision.location
+        }
+        {
+          name: 'DB_ENDPOINT'
+          value: cosmosDb.properties.documentEndpoint
         }
       ]
     }
