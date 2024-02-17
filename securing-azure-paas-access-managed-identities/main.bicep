@@ -221,9 +221,9 @@ resource cosmosDbReadWriteRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDef
   name: guid('${cosmosDb.name}-customreadwriterole')
   parent: cosmosDb
   properties: {
-    // assignableScopes: [
-    //   '/subscriptions/${subscription().id}/resourceGroups/${resourceGroup().name}/providers/Microsoft.DocumentDB/databaseAccounts'
-    // ]
+    assignableScopes: [
+      cosmosDb.id
+    ]
     permissions: [
       {
         dataActions: [
@@ -244,13 +244,12 @@ resource cosmosDBDataAccess 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssign
   name: guid('${managedIdentity.name}-cosmosdb-data-access')
   parent: cosmosDb
   properties: {
-    //scope: '/' // You could also scope this to a specific database or container e.g. '/dbs/IdentityDemoDB/colls/mydbcontainer'
+    scope: cosmosDb.id
     principalId: managedIdentity.properties.principalId
     roleDefinitionId: cosmosDbReadWriteRole.id
     // https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-rbac#built-in-role-definitions
-    //roleDefinitionId: '/${subscription().id}/resourceGroups/<databaseAccountResourceGroup>/providers/Microsoft.DocumentDB/databaseAccounts/<myCosmosAccount>/sqlRoleDefinitions/<roleDefinitionId>'
-    //roleDefinitionId: '/subscriptions/${subscription().id}/resourceGroups/${resourceGroup().name}/providers/Microsoft.DocumentDB/databaseAccounts/${cosmosDb.name}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
-    // roleDefinitionId: subscriptionResourceId(resourceGroup().id ,'Microsoft.DocumentDB/databaseAccounts/${cosmosDb.name}/sqlRoleDefinitions', '00000000-0000-0000-0000-000000000002')
+    // THIS DOES NOT WORK, Because Azure...
+    // roleDefinitionId: '/subscriptions/${subscription().id}/resourceGroups/${resourceGroup().name}/providers/Microsoft.DocumentDB/databaseAccounts/${cosmosDb.name}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
   }
 }
 
