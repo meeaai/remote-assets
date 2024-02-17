@@ -137,6 +137,18 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           name: 'AzureWebJobsStorage'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=core.windows.net;AccountKey=${storageAccount.listKeys().keys[0].value}'
         }
+        {
+          name: 'VAULT_ENDPOINT'
+          value: keyVault.properties.vaultUri
+        }
+        {
+          name: 'AZURE_CLIENT_ID'
+          value: managedIdentity.properties.clientId
+        }
+        {
+          name: 'COMPUTER_VISION_REGION'
+          value: cognitiveVision.location
+        }
       ]
     }
   }
@@ -203,7 +215,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   }
 }
 
-resource secret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+resource visionSubscriptionSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
   name: 'vision-api-key'
   parent: keyVault
   properties: {

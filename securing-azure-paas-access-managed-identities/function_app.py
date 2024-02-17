@@ -15,7 +15,7 @@ app = func.FunctionApp()
 USE_3RD_PARTY_API = os.environ.get("USE_3RD_PARTY_API", "False").lower() == "true"
 IDENTITY_CLIENT_ID = os.environ['AZURE_CLIENT_ID']
 VAULT_ENDPOINT = os.environ['VAULT_ENDPOINT']
-COMPUTER_VISION_REGION = os.environ.get('ACCOUNT_REGION', 'westeurope')
+COMPUTER_VISION_REGION = os.environ.get('COMPUTER_VISION_REGION', 'westeurope')
 
 
 # TODO: Add retries etc
@@ -62,7 +62,7 @@ def main(myblob: func.InputStream):
     start = time.perf_counter()
     blob_content: bytes = myblob.read()
     # Authenticate with user managed identity to acess PAAS services
-    kv_credentials = DefaultAzureCredential(managed_identity_client_id=os.environ['AZURE_CLIENT_ID'])
+    kv_credentials = DefaultAzureCredential(managed_identity_client_id=IDENTITY_CLIENT_ID)
 
     try:
         vision_api_key = __get_kv_secret(VAULT_ENDPOINT, "vision-api-key", kv_credentials)
