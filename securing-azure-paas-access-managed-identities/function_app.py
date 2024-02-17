@@ -28,7 +28,7 @@ def _write_results_to_db(result_record: dict):
 
 @app.function_name(name="BlobTrigger1")
 @app.blob_trigger(arg_name="myblob",
-                  path="imgagecontainer/landing/{name}",
+                  path="myblobcontainer/{name}",
                   connection="AzureWebJobsStorage")
 def main(myblob: func.InputStream):
     logging.info(f"Python blob trigger function processed blob \n"
