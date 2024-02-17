@@ -30,7 +30,7 @@
 
    ```bash
 
-   az deployment group create --resource-group identity-demo2024-rg --template-file ./main.bicep
+   az deployment group create --resource-group identity-demo2024-rg --template-file ./main.bicep --confirm-with-what-if
 
    # Note: We are not using the `--parameters` flag as the template has default values for the parameters. You could create a parameters file or enter the values directly in the command line if you want to override the default values.
    ```

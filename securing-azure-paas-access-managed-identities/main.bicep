@@ -46,6 +46,42 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   }
 }
 
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  name: 'myblobcontainer'
+  parent: blobService
+  properties: {}
+}
+
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-01-01' = {
+  name: 'default'
+  parent: storageAccount
+}
+
+resource queueIn 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-01-01' = {
+  parent: queueService
+  name: 'queueIn'
+  properties: {
+    metadata: {
+      'queue-type': 'inbound'
+    }
+  }
+}
+
+resource queueOut 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-01-01' = {
+  name: 'queueOut'
+  parent: queueService
+  properties: {
+    metadata: {
+      'queue-type': 'outbound'
+    }
+  }
+}
+
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   name: '${functionAppName}-plan'
   location: location
