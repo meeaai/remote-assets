@@ -13,6 +13,9 @@ param keyVaultName string = 'mykeyvault-${uniqueString(resourceGroup().id)}'
 @description('The name of the managed identity resource.')
 param identityName string = 'myuseridentity-${uniqueString(resourceGroup().id)}'
 
+@description('The name of the Computer Vision resource to create')
+param computerVisionName string = 'mungana-identity-training-004'
+
 @description('Whether the managed identity has contributor access on the resource group level')
 param isRGContributor bool = false
 
@@ -31,6 +34,30 @@ resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-
   tags: tags
 }
 
+resource cognitiveVision 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
+  name: computerVisionName
+  location: location
+  kind: 'ComputerVision'
+  identity: {
+    type: 'SystemAssigned, UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentity.id}': {}
+    }
+  }
+  sku: {
+    name: 'S0'
+  }
+  properties: {
+    customSubDomainName: computerVisionName
+    publicNetworkAccess: 'Enabled'
+    networkAcls: {
+      defaultAction: 'Allow'
+      ipRules: []
+      virtualNetworkRules: []
+    }
+  }
+}
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   name: storageAccountName
   location: location
@@ -43,6 +70,67 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
     supportsHttpsTrafficOnly: true
     publicNetworkAccess: 'Enabled'
     allowBlobPublicAccess: false
+  }
+}
+
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  name: 'myblobcontainer'
+  parent: blobService
+  properties: {}
+}
+
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-01-01' = {
+  name: 'default'
+  parent: storageAccount
+}
+
+resource queueIn 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-01-01' = {
+  parent: queueService
+  name: 'queue-in'
+  properties: {
+    metadata: {
+      queueType: 'inbound'
+    }
+  }
+}
+
+resource queueOut 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-01-01' = {
+  name: 'queue-out'
+  parent: queueService
+  properties: {
+    metadata: {
+      queueType: 'outbound'
+    }
+  }
+}
+
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+  name: 'log-${functionAppName}'
+  location: location
+  properties: any({
+    retentionInDays: 7
+    features: {
+      searchVersion: 1
+    }
+    sku: {
+      name: 'PerGB2018'
+    }
+  })
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: 'appi-${functionAppName}'
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    RetentionInDays: 31
+    WorkspaceResourceId: logAnalyticsWorkspace.id
   }
 }
 
@@ -61,7 +149,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   name: functionAppName
   location: location
-  kind: 'functionapp, linux'
+  kind: 'functionapp'
   identity: {
     type: 'SystemAssigned, UserAssigned'
     userAssignedIdentities: {
@@ -78,7 +166,47 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
       appSettings: [
         {
           name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=core.windows.net'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=core.windows.net;AccountKey=${storageAccount.listKeys().keys[0].value}'
+        }
+        {
+          name: 'FUNCTIONS_EXTENSION_VERSION'
+          value: '~4'
+        }
+        {
+          name: 'FUNCTIONS_WORKER_RUNTIME'
+          value: 'python'
+        }
+        {
+          name: 'AzureWebJobsFeatureFlags'
+          value: 'EnableWorkerIndexing'
+        }
+        {
+          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+          value: appInsights.properties.InstrumentationKey
+        }
+        {
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: appInsights.properties.ConnectionString
+        }
+        {
+          name: 'VAULT_ENDPOINT'
+          value: keyVault.properties.vaultUri
+        }
+        {
+          name: 'AZURE_CLIENT_ID'
+          value: managedIdentity.properties.clientId
+        }
+        {
+          name: 'COMPUTER_VISION_ENDPOINT'
+          value: cognitiveVision.properties.endpoint
+        }
+        {
+          name: 'COMPUTER_VISION_REGION'
+          value: cognitiveVision.location
+        }
+        {
+          name: 'DB_ENDPOINT'
+          value: cosmosDb.properties.documentEndpoint
         }
       ]
     }
@@ -98,6 +226,40 @@ resource cosmosDb 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   }
 }
 
+resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-04-15' = {
+  name: 'IdentityDemoDB'
+  parent: cosmosDb
+  properties: {
+    options: {
+      autoscaleSettings: {
+        maxThroughput: 1000
+      }
+    }
+    resource: {
+      id: 'IdentityDemoDB'
+    }
+  }
+}
+
+resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
+  name: 'mydbcontainer'
+  parent: database
+  properties: {
+    resource: {
+      id: 'mydbcontainer'
+      partitionKey: {
+        paths: [
+          '/id'
+        ]
+        kind: 'Hash'
+      }
+    }
+    options: {
+      throughput: 400
+    }
+  }
+}
+
 resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   name: keyVaultName
   location: location
@@ -109,6 +271,15 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
       family: 'A'
       name: 'standard'
     }
+  }
+}
+
+resource visionSubscriptionSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  name: 'vision-api-key'
+  parent: keyVault
+  properties: {
+    value: cognitiveVision.listKeys().key1
+    contentType: 'text/plain'
   }
 }
 
@@ -147,15 +318,39 @@ resource storageAccountQueueAccess 'Microsoft.Authorization/roleAssignments@2022
   }
 }
 
-resource cosmosDBDataAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid('${managedIdentity.name}-cosmosdb-data-access')
-  scope: cosmosDb
+resource cosmosDbReadWriteRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2023-04-15' = {
+  name: guid('${cosmosDb.name}-customreadwriterole')
+  parent: cosmosDb
   properties: {
-    description: 'Allow identity to list containers, as well as read and write from CosmosDB'
-    principalType: 'ServicePrincipal'
+    assignableScopes: [
+      cosmosDb.id
+    ]
+    permissions: [
+      {
+        dataActions: [
+          'Microsoft.DocumentDB/databaseAccounts/readMetadata'
+          'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/*'
+          'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/*'
+        ]
+        notDataActions: []
+      }
+    ]
+    roleName: 'Cosmos DB Custom Data Contributor'
+    type: 'CustomRole'
+  }
+}
+
+@description('Allow identity to list containers, as well as read and write from CosmosDB')
+resource cosmosDBDataAccess 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-04-15' = {
+  name: guid('${managedIdentity.name}-cosmosdb-data-access')
+  parent: cosmosDb
+  properties: {
+    scope: cosmosDb.id
     principalId: managedIdentity.properties.principalId
+    roleDefinitionId: cosmosDbReadWriteRole.id
     // https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-rbac#built-in-role-definitions
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '00000000-0000-0000-0000-000000000002')
+    // THIS DOES NOT WORK, Because Azure...
+    // roleDefinitionId: '/subscriptions/${subscription().id}/resourceGroups/${resourceGroup().name}/providers/Microsoft.DocumentDB/databaseAccounts/${cosmosDb.name}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
   }
 }
 
