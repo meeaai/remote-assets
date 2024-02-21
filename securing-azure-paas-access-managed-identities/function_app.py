@@ -33,7 +33,7 @@ def __get_kv_secret(endpoint: str, secretName: str, credentials: DefaultAzureCre
 def _get_tags_from_vision_api(image: bytes, api_key: str, endpoint: str) -> list:
     logging.info(f"Getting tags from vision API")
     start = time.perf_counter()
-    client = ImageAnalysisClient(endpoint=endpoint, credentials=AzureKeyCredential(api_key))
+    client = ImageAnalysisClient(endpoint=endpoint, credential=AzureKeyCredential(api_key))
     image_analysis_res: ImageAnalysisResult = client._analyze_from_image_data(image_content=image,
                                                                               visual_features=[VisualFeatures.TAGS],
                                                                               language="en")

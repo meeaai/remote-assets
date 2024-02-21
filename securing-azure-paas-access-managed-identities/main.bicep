@@ -45,7 +45,7 @@ resource cognitiveVision 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
     }
   }
   sku: {
-    name: 'S0'
+    name: 'F0'
   }
   properties: {
     customSubDomainName: computerVisionName
@@ -113,7 +113,6 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10
   name: 'log-${functionAppName}'
   location: location
   properties: any({
-    retentionInDays: 7
     features: {
       searchVersion: 1
     }
@@ -129,7 +128,6 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   kind: 'web'
   properties: {
     Application_Type: 'web'
-    RetentionInDays: 31
     WorkspaceResourceId: logAnalyticsWorkspace.id
   }
 }
