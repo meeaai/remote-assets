@@ -180,6 +180,8 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           name: 'AzureWebJobsSecretStorageKeyVaultClientId'
           value: managedIdentity.properties.clientId
         }
+        // We could use keyvault.getSecrets() to retrieve the secrets, but I think this
+        // will require the value to be passed in as a secure parameter - maybe later
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
           value: appInsights.properties.ConnectionString
@@ -263,6 +265,8 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
     tenantId: subscription().tenantId
     enableRbacAuthorization: true
     enablePurgeProtection: true
+    // This must be enabled if we intend to use keyvault.getSecrets() to reference secrets during deployment
+    enabledForDeployment: true
     sku: {
       family: 'A'
       name: 'standard'
@@ -367,5 +371,42 @@ resource keyVaultSecretsAccess 'Microsoft.Authorization/roleAssignments@2022-04-
     principalType: 'ServicePrincipal'
     principalId: managedIdentity.properties.principalId
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+  }
+}
+
+// Assign Function App roles for the runtime and blob trigger
+@description('Storage Account Contributor Role')
+resource functionAppAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid('${functionApp.name}-function-app-access')
+  scope: storageAccount
+  properties: {
+    description: 'Allow function app system-assigned identity to access storage account'
+    principalType: 'ServicePrincipal'
+    principalId: functionApp.identity.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab')
+  }
+}
+
+@description('Storage Blob Data Owner Role')
+resource functionAppBlobAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid('${functionApp.name}-function-app-blob-access')
+  scope: storageAccount
+  properties: {
+    description: 'Allow function app system-assigned identity to read and write blob data'
+    principalType: 'ServicePrincipal'
+    principalId: functionApp.identity.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')
+  }
+}
+
+@description('Storage Queue Data Contributor Role')
+resource functionAppQueueAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid('${functionApp.name}-function-app-queue-access')
+  scope: storageAccount
+  properties: {
+    description: 'Allow function app system-assigned identity to read and write queue messages'
+    principalType: 'ServicePrincipal'
+    principalId: functionApp.identity.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '974c5e8b-45b9-4653-ba55-5f855dd0fb88')
   }
 }

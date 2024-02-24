@@ -7,12 +7,11 @@
 
 > **Azure Managed Identities** provide a secure and simple way to access Azure resources **without the need to store credentials** in code or configuration files. This demo illustrated the benefits of using a managed identity in place of the `AzureWebJobsStorage` connection string in an Azure Functions app.
 
-
 Managed Identities offer a lot of benefits, inculding
+
 - Reduced security risk: No need to store credentials in code or configuration files which can be misused or leaked.
 - Auditing and compliance: It might be easier to track and audit the use of managed identities in your environment compared to connection strings.
 - Simplified management: You no longer need to manage and rotate credentials for the storage account.
-
 
 ## Prerequisites
 
@@ -42,9 +41,12 @@ Managed Identities offer a lot of benefits, inculding
    # Note: We are not using the `--parameters` flag as the template has default values for the parameters. You could create a parameters file or enter the values directly in the command line if you want to override the default values.
    ```
 
-3. Managed Identity roles
+3. A **note** on Function App's Managed Identity roles
 
 - At minimum, the identity used by your function app runtime must have the `Storage Blob Data Owner` role, however, more roles may be required based on the types of bindings used in your function app. You can learn more about this [here](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-based-connections-tutorial)
+
+- For most cases, it will be sufficient to assign these roles to your Function App's identity: `Storage Account Contributor`,
+`Storage Blob Data Owner`, `Storage Queue Data Contributor` and `Storage Table Data Contributor`. Check out [this guide](https://learn.microsoft.com/en-us/azure/azure-functions/functions-reference?tabs=blob&pivots=programming-language-python#grant-permission-to-the-identity) if you experience any issues with your binding permissions.
 
 ## Example workflow
 
@@ -65,7 +67,6 @@ Managed Identities offer a lot of benefits, inculding
   az group delete --name fn-app-identity-rg  --yes --no-wait
   ```
 
-
 ## Limitations
 
 While the use of managed identities is a secure and convenient way to access Azure resources, there are some limitations to be aware of:
@@ -74,7 +75,7 @@ While the use of managed identities is a secure and convenient way to access Azu
 
 2. Managed Identities are only available in Azure and for services that utilise [Microsoft Entra ID RBAC (Role Based Access Control)](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/services-id-authentication-support). If your services are hosted on other cloud providers or on-premises, you will need to use other methods to manage access.
 
-3. Managed Identities are not available in all regions. You can check the availability of managed identities in your region [here](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview#availability)
+3. Replacing `AzureWebJobsStorage` with a managed identitymight also affect the way [you deploy your function app](https://learn.microsoft.com/en-us/azure/azure-functions/functions-reference?tabs=blob&pivots=programming-language-python#connecting-to-host-storage-with-an-identity).
 
   <br/>
   <br/>
@@ -142,6 +143,8 @@ az cosmosdb sql role assignment create --account-name $accountName \
 
 # Related Links
 
-- [Azure AI Language RBAC](https://learn.microsoft.com/en-za/azure/ai-services/language-service/concepts/role-based-access-control)
-- [Azure Function Runtime Keyless Authentication - Tutorial](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-based-connections-tutorial)
 - [Securing Azure Functions](https://learn.microsoft.com/en-us/azure/azure-functions/security-concepts?tabs=v4#secret-repositories)
+- [Azure Function Runtime Keyless Authentication - Tutorial](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-based-connections-tutorial)
+- [Use Identities for Triggers and Bindings - Tutorial](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-based-connections-tutorial-2)
+- [Use Managed Identity to Connect Function App to Azure SQL](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-access-azure-sql-with-managed-identity)
+- [Azure AI Language RBAC](https://learn.microsoft.com/en-za/azure/ai-services/language-service/concepts/role-based-access-control)
