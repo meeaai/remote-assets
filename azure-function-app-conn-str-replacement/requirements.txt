@@ -2,4 +2,6 @@
 # The Python Worker is managed by the Azure Functions platform
 # Manually managing azure-functions-worker may cause unexpected issues
 
-azure-functions
+azure-functions==1.18.0
+azure-ai-textanalytics==5.3.0
+azure-cosmos==4.5.1
