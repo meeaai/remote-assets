@@ -136,6 +136,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
       linuxFxVersion: 'Python|3.11'
       ftpsState: 'FtpsOnly'
       minTlsVersion: '1.2'
+      keyVaultReferenceIdentity: managedIdentity.properties.principalId
       appSettings: [
         // This is the traditional way to authenticate the Function App runtime to access the storage account
         // We will use the managed identity instead
@@ -172,12 +173,20 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           value: 'EnableWorkerIndexing'
         }
         {
-          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-          value: appInsights.properties.InstrumentationKey
+          name: 'AzureWebJobsSecretStorageType'
+          value: 'keyvault'
+        }
+        {
+          name: 'AzureWebJobsSecretStorageKeyVaultClientId'
+          value: managedIdentity.properties.clientId
         }
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
           value: appInsights.properties.ConnectionString
+        }
+        {
+          name: 'AzureWebJobsDisableHomepage'
+          value: 'true'
         }
         {
           name: 'KEYVAULT_ENDPOINT'
@@ -266,6 +275,15 @@ resource langSubscriptionSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' =
   parent: keyVault
   properties: {
     value: lang.listKeys().key1
+    contentType: 'text/plain'
+  }
+}
+
+resource appInsightsConnStr 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  name: 'appi-connection-string'
+  parent: keyVault
+  properties: {
+    value: appInsights.properties.ConnectionString
     contentType: 'text/plain'
   }
 }

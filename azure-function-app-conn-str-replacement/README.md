@@ -65,6 +65,17 @@ Managed Identities offer a lot of benefits, inculding
   az group delete --name fn-app-identity-rg  --yes --no-wait
   ```
 
+
+## Limitations
+
+While the use of managed identities is a secure and convenient way to access Azure resources, there are some limitations to be aware of:
+
+1. Some services do not [support managed identities](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/managed-identities-status). For example, you cannot use a managed identity to access Azure SMB file shares. Fortunately this can be easily solved by using a service like Azure Key Vault to store the credentials and then use a managed identity to access the Key Vault.
+
+2. Managed Identities are only available in Azure and for services that utilise [Microsoft Entra ID RBAC (Role Based Access Control)](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/services-id-authentication-support). If your services are hosted on other cloud providers or on-premises, you will need to use other methods to manage access.
+
+3. Managed Identities are not available in all regions. You can check the availability of managed identities in your region [here](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview#availability)
+
   <br/>
   <br/>
 
@@ -133,3 +144,4 @@ az cosmosdb sql role assignment create --account-name $accountName \
 
 - [Azure AI Language RBAC](https://learn.microsoft.com/en-za/azure/ai-services/language-service/concepts/role-based-access-control)
 - [Azure Function Runtime Keyless Authentication - Tutorial](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-based-connections-tutorial)
+- [Securing Azure Functions](https://learn.microsoft.com/en-us/azure/azure-functions/security-concepts?tabs=v4#secret-repositories)
