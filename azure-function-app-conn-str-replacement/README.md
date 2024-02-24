@@ -7,6 +7,13 @@
 
 > **Azure Managed Identities** provide a secure and simple way to access Azure resources **without the need to store credentials** in code or configuration files. This demo illustrated the benefits of using a managed identity in place of the `AzureWebJobsStorage` connection string in an Azure Functions app.
 
+
+Managed Identities offer a lot of benefits, inculding
+- Reduced security risk: No need to store credentials in code or configuration files which can be misused or leaked.
+- Auditing and compliance: It might be easier to track and audit the use of managed identities in your environment compared to connection strings.
+- Simplified management: You no longer need to manage and rotate credentials for the storage account.
+
+
 ## Prerequisites
 
 - Azure subscription
@@ -35,7 +42,9 @@
    # Note: We are not using the `--parameters` flag as the template has default values for the parameters. You could create a parameters file or enter the values directly in the command line if you want to override the default values.
    ```
 
-3. If all well, you should now be able to try the example workflow described in the next section.
+3. Managed Identity roles
+
+- At minimum, the identity used by your function app runtime must have the `Storage Blob Data Owner` role, however, more roles may be required based on the types of bindings used in your function app. You can learn more about this [here](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-based-connections-tutorial)
 
 ## Example workflow
 
@@ -117,3 +126,10 @@ az cosmosdb sql role assignment create --account-name $accountName \
    --principal-id $principalId \
    --role-definition-id $roleDefinitionId
 ```
+
+---
+
+# Related Links
+
+- [Azure AI Language RBAC](https://learn.microsoft.com/en-za/azure/ai-services/language-service/concepts/role-based-access-control)
+- [Azure Function Runtime Keyless Authentication - Tutorial](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-based-connections-tutorial)
