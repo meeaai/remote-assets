@@ -92,9 +92,9 @@ While the use of managed identities is a secure and convenient way to access Azu
 
 # Troubleshooting
 
-- **Deployment permissions**: If you encounter an Authorization error during deployment, ensure that you have the necessary permissions to create and assign permissions on a Resource Group or Subscription level. Note that having Contributor permissions on a Resource Group does not automatically grant you the ability to assign permissions to a managed identity.
+1. **Deployment permissions**: If you encounter an Authorization error during deployment, ensure that you have the necessary permissions to create and assign permissions on a Resource Group or Subscription level. Note that having Contributor permissions on a Resource Group does not automatically grant you the ability to assign permissions to a managed identity.
 
-- \*\*...role definition with ID '00000000000000000000000000000002' does not exist": If you ecnounter this error while deploying the template, try using the Azure CLI to assign the role to the managed identity instead
+2. ...role definition with ID '00000000000000000000000000000002' does not exist": If you ecnounter this error while deploying the template, try using the Azure CLI to assign the role to the managed identity instead
 
 ```bash
 resourceGroupName='<myResourceGroup>'
@@ -109,7 +109,7 @@ az cosmosdb sql role assignment create --account-name $accountName \
    --role-definition-id $readOnlyRoleDefinitionId
 ```
 
-- Better yet, you could define a custom role with the necessary permissions and assign it to the managed identity. This will give you more control over the permissions granted to the managed identity. For example:
+3. Better yet, you could define a custom role with the necessary permissions and assign it to the managed identity. This will give you more control over the permissions granted to the managed identity. For example:
 
 ```json
 // custom-role.json
@@ -149,6 +149,10 @@ az cosmosdb sql role assignment create --account-name $accountName \
    --role-definition-id $roleDefinitionId
 ```
 
+4. Azure Functions Core Tools does not support this deployment path. Please configure the app to deploy from a remote package using the steps here: https://aka.ms/deployfromurl
+
+
+
 ---
 
 # Related Links
@@ -158,3 +162,4 @@ az cosmosdb sql role assignment create --account-name $accountName \
 - [Use Identities for Triggers and Bindings - Tutorial](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-based-connections-tutorial-2)
 - [Use Managed Identity to Connect Function App to Azure SQL](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-access-azure-sql-with-managed-identity)
 - [Azure AI Language RBAC](https://learn.microsoft.com/en-za/azure/ai-services/language-service/concepts/role-based-access-control)
+- [Deploy Function App From External Package](https://learn.microsoft.com/en-us/azure/azure-functions/run-functions-from-deployment-package)
