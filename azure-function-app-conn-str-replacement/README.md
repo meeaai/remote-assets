@@ -48,6 +48,16 @@ Managed Identities offer a lot of benefits, inculding
 - For most cases, it will be sufficient to assign these roles to your Function App's identity: `Storage Account Contributor`,
 `Storage Blob Data Owner`, `Storage Queue Data Contributor` and `Storage Table Data Contributor`. Check out [this guide](https://learn.microsoft.com/en-us/azure/azure-functions/functions-reference?tabs=blob&pivots=programming-language-python#grant-permission-to-the-identity) if you experience any issues with your binding permissions.
 
+
+4. Deploy function app code using Azure Functions Core Tools
+
+   ```bash
+   func azure functionapp publish $functionAppName
+   ```
+
+5. Try uploading one of the sample documents in the `test_documents` folder to the storage account. The function app should be triggered and the language of the document should be detected and stored in the CosmosDB database.
+  
+
 ## Example workflow
 
 - To illustrate the benefits of using managed identities in an Azure Functions app, we will create a use a simple workflow to detect the language of
