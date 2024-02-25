@@ -14,7 +14,7 @@ param keyVaultName string = 'mykeyvault-${uniqueString(resourceGroup().id)}'
 param identityName string = 'myuseridentity-${uniqueString(resourceGroup().id)}'
 
 @description('The name of the Language Understanding resource.')
-param textAnalyticsName string = 'lang-identity-training-demo-001'
+param textAnalyticsName string = 'lang-identity-training-demo-002'
 
 @description('Whether the managed identity has contributor access on the resource group level')
 param isRGContributor bool = false
@@ -166,6 +166,10 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         }
         {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+          value: 'true'
+        }
+        {
+          name: 'ENABLE_ORYX_BUILD'
           value: 'true'
         }
         {

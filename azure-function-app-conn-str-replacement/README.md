@@ -29,14 +29,14 @@ Managed Identities offer a lot of benefits, inculding
 1. [Optional] Create a resource group if you do not have one already
 
    ```bash
-   az group create --name fn-app-identity-rg --location westeurope
+   az group create --name fn-app-identity-rg-01 --location westeurope
    ```
 
 2. Deploy bicep template
 
    ```bash
 
-   az deployment group create --resource-group fn-app-identity-rg  --template-file ./main.bicep --confirm-with-what-if
+   az deployment group create --resource-group fn-app-identity-rg-01  --template-file ./main.bicep --confirm-with-what-if
 
    # Note: We are not using the `--parameters` flag as the template has default values for the parameters. You could create a parameters file or enter the values directly in the command line if you want to override the default values.
    ```
@@ -74,7 +74,7 @@ Managed Identities offer a lot of benefits, inculding
 - If you do not intend to keep the resources, you can delete the resource group to remove all the resources created in this demo.
 
   ```bash
-  az group delete --name fn-app-identity-rg  --yes --no-wait
+  az group delete --name fn-app-identity-rg-01 --yes --no-wait
   ```
 
 ## Limitations
@@ -157,8 +157,6 @@ az cosmosdb sql role assignment create --account-name $accountName \
 
 * In this demo, we have provided a bash script `upload_package.sh` to create a zip of the function app project and upload it to a storage account container. Because our function app already uses a managed identity with the necessary permissions, we do not need to specify SAS when setting the value of `WEBSITE_RUN_FROM_PACKAGE`.
 
-
-
 ---
 
 # Related Links
@@ -169,3 +167,4 @@ az cosmosdb sql role assignment create --account-name $accountName \
 - [Use Managed Identity to Connect Function App to Azure SQL](https://learn.microsoft.com/en-us/azure/azure-functions/functions-identity-access-azure-sql-with-managed-identity)
 - [Azure AI Language RBAC](https://learn.microsoft.com/en-za/azure/ai-services/language-service/concepts/role-based-access-control)
 - [Deploy Function App From External Package](https://learn.microsoft.com/en-us/azure/azure-functions/run-functions-from-deployment-package)
+- [Azure Functions - Connecting to host storage with an identity](https://learn.microsoft.com/en-us/azure/azure-functions/functions-reference?tabs=blob&pivots=programming-language-python#connecting-to-host-storage-with-an-identity)

@@ -7,7 +7,7 @@ containerName=${2:-myblobcontainer}
 echo "$(date) Packaging and uploading to storage account: $storageAccountName"
 
 mkdir -p bin
-zip bin/functionapp.zip requirements.txt function_app.py host.json README.md
+zip bin/functionapp.zip requirements.txt function_app.py host.json README.md .python_packages/ -r
 echo "$(date) Package zip created"
 
 ## Uncomment login command if you are not logged in to azcop

@@ -75,6 +75,13 @@ def _detect_language(documents: list[str], azure_ai_language_endpoint: str, azur
     return outcomes
 
 
+@app.function_name(name="TimerTrigger1")
+@app.timer_trigger(arg_name="mytimer", schedule="*/10 * * * * *", run_on_startup=True)
+def fun1(mytimer: func.TimerRequest):
+    logging.info(f"Python timer trigger function executed at: {datetime.now()}")
+    return
+
+
 @app.function_name(name="BlobTrigger1")
 @app.blob_trigger(arg_name="myblob",
                   path="myblobcontainer/{name}",
