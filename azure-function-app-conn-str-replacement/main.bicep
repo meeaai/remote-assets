@@ -161,6 +161,14 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           value: 'managedidentity'
         }
         {
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '${storageAccount.properties.primaryEndpoints.blob}/${blobContainer.name}/deployments/functionapp.zip'
+        }
+        {
+          name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+          value: 'true'
+        }
+        {
           name: 'FUNCTIONS_EXTENSION_VERSION'
           value: '~4'
         }

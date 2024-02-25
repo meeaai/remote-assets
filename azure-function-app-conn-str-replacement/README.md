@@ -151,6 +151,12 @@ az cosmosdb sql role assignment create --account-name $accountName \
 
 4. Azure Functions Core Tools does not support this deployment path. Please configure the app to deploy from a remote package using the steps here: https://aka.ms/deployfromurl
 
+* This is an expected limitation of using managed identities in place of connections strings in `AzureWebJobsStorage`
+
+* One option to resolve this is to package your function app project as a zip file and upload it to a storage account. From there you can proceed to tell the Function app runtime where the zip file is stored using this App Setting: `WEBSITE_RUN_FROM_PACKAGE=https://<storage-account-name>.blob.core.windows.net/<container-name>/<zip-file-name>.zip`
+
+* In this demo, we have provided a bash script `upload_package.sh` to create a zip of the function app project and upload it to a storage account container. Because our function app already uses a managed identity with the necessary permissions, we do not need to specify SAS when setting the value of `WEBSITE_RUN_FROM_PACKAGE`.
+
 
 
 ---
