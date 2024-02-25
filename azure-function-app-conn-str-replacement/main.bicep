@@ -133,7 +133,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     reserved: true
     serverFarmId: appServicePlan.id
     siteConfig: {
-      linuxFxVersion: 'Python|3.11'
+      linuxFxVersion: 'PYTHON|3.11'
       ftpsState: 'FtpsOnly'
       minTlsVersion: '1.2'
       keyVaultReferenceIdentity: managedIdentity.properties.principalId
@@ -162,7 +162,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         }
         {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: '${storageAccount.properties.primaryEndpoints.blob}/${blobContainer.name}/deployments/functionapp.zip'
+          value: '${storageAccount.properties.primaryEndpoints.blob}${blobContainer.name}/deployments/functionapp.zip'
         }
         {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
@@ -183,6 +183,10 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         {
           name: 'AzureWebJobsSecretStorageType'
           value: 'keyvault'
+        }
+        {
+          name: 'AzureWebJobsSecretStorageKeyVaultUri'
+          value: keyVault.properties.vaultUri
         }
         {
           name: 'AzureWebJobsSecretStorageKeyVaultClientId'

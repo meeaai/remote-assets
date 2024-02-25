@@ -6,12 +6,13 @@ storageAccountName=${1:-myblobstorehbf3keghjkav2}
 containerName=${2:-myblobcontainer}
 echo "$(date) Packaging and uploading to storage account: $storageAccountName"
 
-zip functionapp.zip requirements.txt function_app.py host.json README.md
+mkdir -p bin
+zip bin/functionapp.zip requirements.txt function_app.py host.json README.md
 echo "$(date) Package zip created"
 
 ## Uncomment login command if you are not logged in to azcop
 # azcopy login --tenant-id <tenant-id>
-azcopy cp functionapp.zip "https://${storageAccountName}.blob.core.windows.net/${containerName}/deployments/functionapp.zip" --overwrite=true
-rm functionapp.zip
+azcopy cp "$PWD/bin/functionapp.zip" "https://${storageAccountName}.blob.core.windows.net/${containerName}/deployments/functionapp.zip" --overwrite=true
+rm bin/functionapp.zip
 
 echo "$(date) Package uploaded to https://${storageAccountName}.blob.core.windows.net/${containerName}/deployments/functionapp.zip"
