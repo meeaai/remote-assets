@@ -230,6 +230,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
 resource cosmosDb 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   name: cosmosDBAccountName
   location: location
+  kind: 'GlobalDocumentDB'
   properties: {
     locations: [
       {
@@ -237,6 +238,11 @@ resource cosmosDb 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
       }
     ]
     databaseAccountOfferType: 'Standard'
+    capabilities: [
+      {
+        name: 'EnableServerless'
+      }
+    ]
   }
 }
 
