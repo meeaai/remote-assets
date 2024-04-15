@@ -25,7 +25,7 @@ param location string = resourceGroup().location
 param tags object = {
   Environment: 'Demo'
   Contact: 'info@mungana.com'
-  Repo: 'https://github.com/rihonegroupdev/remote-assets/securing-azure-paas-access-managed-identities'
+  Repo: 'https://github.com/rihonegroup/remote-assets/securing-azure-paas-access-managed-identities'
 }
 
 resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
