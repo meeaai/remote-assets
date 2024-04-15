@@ -13,8 +13,8 @@ param keyVaultName string = 'mykeyvault-${uniqueString(resourceGroup().id)}'
 @description('The name of the managed identity resource.')
 param identityName string = 'myuseridentity-${uniqueString(resourceGroup().id)}'
 
-@description('The name of the Computer Vision resource to create')
-param computerVisionName string = 'mungana-identity-training-004'
+@description('The name of the Language Understanding resource.')
+param textAnalyticsName string = 'lang-identity-training-demo-002'
 
 @description('Whether the managed identity has contributor access on the resource group level')
 param isRGContributor bool = false
@@ -34,10 +34,10 @@ resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-
   tags: tags
 }
 
-resource cognitiveVision 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: computerVisionName
+resource lang 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
+  name: textAnalyticsName
   location: location
-  kind: 'ComputerVision'
+  kind: 'TextAnalytics'
   identity: {
     type: 'SystemAssigned, UserAssigned'
     userAssignedIdentities: {
@@ -48,7 +48,7 @@ resource cognitiveVision 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
     name: 'F0'
   }
   properties: {
-    customSubDomainName: computerVisionName
+    customSubDomainName: textAnalyticsName
     publicNetworkAccess: 'Enabled'
     networkAcls: {
       defaultAction: 'Allow'
@@ -82,31 +82,6 @@ resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/container
   name: 'myblobcontainer'
   parent: blobService
   properties: {}
-}
-
-resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-01-01' = {
-  name: 'default'
-  parent: storageAccount
-}
-
-resource queueIn 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-01-01' = {
-  parent: queueService
-  name: 'queue-in'
-  properties: {
-    metadata: {
-      queueType: 'inbound'
-    }
-  }
-}
-
-resource queueOut 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-01-01' = {
-  name: 'queue-out'
-  parent: queueService
-  properties: {
-    metadata: {
-      queueType: 'outbound'
-    }
-  }
 }
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
@@ -158,13 +133,44 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     reserved: true
     serverFarmId: appServicePlan.id
     siteConfig: {
-      linuxFxVersion: 'Python|3.11'
+      linuxFxVersion: 'PYTHON|3.11'
       ftpsState: 'FtpsOnly'
       minTlsVersion: '1.2'
+      keyVaultReferenceIdentity: managedIdentity.properties.principalId
       appSettings: [
+        // This is the traditional way to authenticate the Function App runtime to access the storage account
+        // We will use the managed identity instead
+        // {
+        //   name: 'AzureWebJobsStorage'
+        //   value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=core.windows.net;AccountKey=${storageAccount.listKeys().keys[0].value}'
+        // }
+
+        // It is important to note that this may affect your binding configuration
+        // Learn more: https://learn.microsoft.com/en-us/azure/azure-functions/functions-reference?tabs=blob&pivots=programming-language-python#connecting-to-host-storage-with-an-identity
         {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=core.windows.net;AccountKey=${storageAccount.listKeys().keys[0].value}'
+          name: 'AzureWebJobsStorage__accountName'
+          value: storageAccount.name
+        }
+        // Uncomment if your prefer to use the user-assigned identity instead of the system-assigned identity
+        // {
+        //   name: 'AzureWebJobsStorage__clientId'
+        //   value: managedIdentity.properties.clientId
+        // }
+        {
+          name: 'AzureWebJobsStorage__credential'
+          value: 'managedidentity'
+        }
+        {
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '${storageAccount.properties.primaryEndpoints.blob}${blobContainer.name}/deployments/functionapp.zip'
+        }
+        {
+          name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+          value: 'true'
+        }
+        {
+          name: 'ENABLE_ORYX_BUILD'
+          value: 'true'
         }
         {
           name: 'FUNCTIONS_EXTENSION_VERSION'
@@ -179,31 +185,41 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           value: 'EnableWorkerIndexing'
         }
         {
-          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-          value: appInsights.properties.InstrumentationKey
+          name: 'AzureWebJobsSecretStorageType'
+          value: 'keyvault'
         }
+        {
+          name: 'AzureWebJobsSecretStorageKeyVaultUri'
+          value: keyVault.properties.vaultUri
+        }
+        {
+          name: 'AzureWebJobsSecretStorageKeyVaultClientId'
+          value: managedIdentity.properties.clientId
+        }
+        // We could use keyvault.getSecrets() to retrieve the secrets, but I think this
+        // will require the value to be passed in as a secure parameter - maybe later
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
           value: appInsights.properties.ConnectionString
         }
         {
-          name: 'VAULT_ENDPOINT'
+          name: 'AzureWebJobsDisableHomepage'
+          value: 'true'
+        }
+        {
+          name: 'KEYVAULT_ENDPOINT'
           value: keyVault.properties.vaultUri
         }
         {
-          name: 'AZURE_CLIENT_ID'
+          name: 'USER_IDENTITY_CLIENT_ID'
           value: managedIdentity.properties.clientId
         }
         {
-          name: 'COMPUTER_VISION_ENDPOINT'
-          value: cognitiveVision.properties.endpoint
+          name: 'AZURE_LANGUAGE_ENDPOINT'
+          value: lang.properties.endpoint
         }
         {
-          name: 'COMPUTER_VISION_REGION'
-          value: cognitiveVision.location
-        }
-        {
-          name: 'DB_ENDPOINT'
+          name: 'COSMOSDB_ENDPOINT'
           value: cosmosDb.properties.documentEndpoint
         }
       ]
@@ -271,6 +287,8 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
     tenantId: subscription().tenantId
     enableRbacAuthorization: true
     enablePurgeProtection: true
+    // This must be enabled if we intend to use keyvault.getSecrets() to reference secrets during deployment
+    enabledForDeployment: true
     sku: {
       family: 'A'
       name: 'standard'
@@ -278,11 +296,20 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   }
 }
 
-resource visionSubscriptionSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
-  name: 'vision-api-key'
+resource langSubscriptionSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  name: 'language-api-key'
   parent: keyVault
   properties: {
-    value: cognitiveVision.listKeys().key1
+    value: lang.listKeys().key1
+    contentType: 'text/plain'
+  }
+}
+
+resource appInsightsConnStr 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  name: 'appi-connection-string'
+  parent: keyVault
+  properties: {
+    value: appInsights.properties.ConnectionString
     contentType: 'text/plain'
   }
 }
@@ -366,5 +393,42 @@ resource keyVaultSecretsAccess 'Microsoft.Authorization/roleAssignments@2022-04-
     principalType: 'ServicePrincipal'
     principalId: managedIdentity.properties.principalId
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+  }
+}
+
+// Assign Function App roles for the runtime and blob trigger
+@description('Storage Account Contributor Role')
+resource functionAppAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid('${functionApp.name}-function-app-access')
+  scope: storageAccount
+  properties: {
+    description: 'Allow function app system-assigned identity to access storage account'
+    principalType: 'ServicePrincipal'
+    principalId: functionApp.identity.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab')
+  }
+}
+
+@description('Storage Blob Data Owner Role')
+resource functionAppBlobAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid('${functionApp.name}-function-app-blob-access')
+  scope: storageAccount
+  properties: {
+    description: 'Allow function app system-assigned identity to read and write blob data'
+    principalType: 'ServicePrincipal'
+    principalId: functionApp.identity.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')
+  }
+}
+
+@description('Storage Queue Data Contributor Role')
+resource functionAppQueueAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid('${functionApp.name}-function-app-queue-access')
+  scope: storageAccount
+  properties: {
+    description: 'Allow function app system-assigned identity to read and write queue messages'
+    principalType: 'ServicePrincipal'
+    principalId: functionApp.identity.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '974c5e8b-45b9-4653-ba55-5f855dd0fb88')
   }
 }

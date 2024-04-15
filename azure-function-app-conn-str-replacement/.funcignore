@@ -1,0 +1,4 @@
+test_documents/
+.vscode/
+main.bicep
+upload_package.sh
